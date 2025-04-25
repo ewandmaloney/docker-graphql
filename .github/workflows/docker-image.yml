@@ -1,54 +1,50 @@
-name: Docker Image CI
+name: Docker Image CI  # Nombre del workflow
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main" ]  # Se ejecuta cuando hay un push a la rama main
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main" ]  # También se ejecuta en pull requests hacia la rama main
 
 jobs:
 
-  build:
+  build:  # Nombre del job
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest  # Utiliza la última versión de Ubuntu como entorno de ejecución
 
     steps:
     - name: Checkout Code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v4  # Clona el repositorio en el runner
       with:
-        fetch-depth: 0
+        fetch-depth: 0  # Clona todo el historial Git (necesario para calcular la versión semántica correctamente)
 
     - name: Git Semantic Version
-      uses: PaulHatch/semantic-version@v4.0.3
+      uses: PaulHatch/semantic-version@v4.0.3  # Usa una acción para generar versiones semánticas automáticas
       with:
-        major_patter: "major:"
-        minor_patter: "feat:"
-        format: "${major}.${minor}.${patch}-prerelease${increment}"
-      id: version
+        major_patter: "major:"  # Si el commit incluye "major:", se incrementa el major
+        minor_patter: "feat:"   # Si el commit incluye "feat:", se incrementa el minor
+        format: "${major}.${minor}.${patch}"  # Formato de la versión
+      id: version  # ID de este paso, para poder acceder a su salida con `steps.version.outputs.version`
 
     - name: Docker Login
       env:
-        DOCKER_USER: ${{ secrets.DOCKER_USER }}
-        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-        NEW_VERSION: ${{ steps.version.outputs.version }}
+        DOCKER_USER: ${{ secrets.DOCKER_USER }}  # Usuario de DockerHub desde los secrets del repositorio
+        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}  # Contraseña de DockerHub desde los secrets
+        NEW_VERSION: ${{ steps.version.outputs.version }}  # Versión generada anteriormente
       run: |
-        docker login -u $DOCKER_USER -p $DOCKER_PASSWORD
+        docker login -u $DOCKER_USER -p $DOCKER_PASSWORD  # Inicia sesión en DockerHub
 
     - name: Build Docker Image
       env: 
-        NEW_VERSION: ${{ steps.version.outputs.version }}
+        NEW_VERSION: ${{ steps.version.outputs.version }}  # Versión generada
+        
       run: |
-        docker build -t edmaloney/docker-graphql:$NEW_VERSION .
-        docker build -t edmaloney/docker-graphql:latest .
-  
+        docker build -t edmaloney/docker-graphql:$NEW_VERSION .  
+        docker build -t edmaloney/docker-graphql:latest .        
+
     - name: Push Docker Image
       env: 
-        NEW_VERSION: ${{ steps.version.outputs.version }}
+        NEW_VERSION: ${{ steps.version.outputs.version }}  # Versión generada
       run: |
-        docker push edmaloney/docker-graphql:$NEW_VERSION
-        docker push edmaloney/docker-graphql:latest
-
-        
-    
-    # - name: Build the Docker image
-    #   run: docker build . --file Dockerfile --tag my-image-name:$(date +%s)
+        docker push edmaloney/docker-graphql:$NEW_VERSION  
+        docker push edmaloney/docker-graphql:latest         
